@@ -47,9 +47,10 @@ def upload(request):
 
     #Verify that file is a valid image
     backend = image_processing.get_backend()
-    try:
-        backend.image_verify(upload)
-    except IOError:
+    name = upload.name.lower()
+    extension = name[name.rfind('.')+1:]
+    s = "jpg jpeg png"
+    if s.find(extension) == -1:
         return HttpResponse("""
                    <script type='text/javascript'>
                         alert('Invalid image')
