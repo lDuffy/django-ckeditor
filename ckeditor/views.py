@@ -37,19 +37,20 @@ def get_upload_filename(upload_name, user):
 @csrf_exempt
 def upload(request):
     """
-    Uploads a file and send back its URL to CKEditor.
+     Uploads a file and send back its URL to CKEditor.
 
-    TODO:
-        Validate uploads
-    """
+     TODO:
+         Validate uploads
+     """
     # Get the uploaded file from request.
     upload = request.FILES['upload']
 
     #Verify that file is a valid image
     backend = image_processing.get_backend()
-    try:
-        backend.image_verify(upload)
-    except IOError:
+    backend.image_verify(upload)
+    name = upload.name.lower()
+    s = "jpg jpeg png"
+    if s.find(name) == -1:
         return HttpResponse("""
                    <script type='text/javascript'>
                         alert('Invalid image')
