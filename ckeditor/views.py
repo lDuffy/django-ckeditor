@@ -53,7 +53,7 @@ def upload(request):
     if s.find(extension) == -1:
         return HttpResponse("""
                    <script type='text/javascript'>
-                        alert('Invalid image')
+                        alert('Invalid image. Please use .jpg or .png')
                         window.parent.CKEDITOR.tools.callFunction({0});
                    </script>""".format(request.GET['CKEditorFuncNum']))
 
