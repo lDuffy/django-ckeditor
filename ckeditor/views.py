@@ -19,14 +19,10 @@ def get_upload_filename(upload_name, user):
     else:
         user_path = ''
 
-    # Generate date based path to put uploaded file.
-    date_path = datetime.now().strftime('%Y/%m/%d')
-
-
 
     # Complete upload path (upload_path + date_path).
     upload_path = os.path.join(
-        settings.CKEDITOR_UPLOAD_PATH, user_path, date_path)
+        settings.CKEDITOR_UPLOAD_PATH, user_path)
 
     if getattr(settings, "CKEDITOR_UPLOAD_SLUGIFY_FILENAME", True):
         upload_name = utils.slugify_filename(upload_name)
