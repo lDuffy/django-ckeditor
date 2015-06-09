@@ -1,13 +1,9 @@
 Django CKEditor
-================
-**Note that there are two packages on PyPi - django-ckeditor made of this repository, and django-ckeditor-updated made from riklaunim / django-ckeditor fork.**
-Recently the code from riklaunim / django-ckeditor was merged into this repository but the PyPi package hasn't been updated yet. The new code brings support
-for recent Django versions as well as changes application configuration (no absolute path due to django file storage usage).
+===============
 
-* riklaunim / django-ckeditor is on PyPi as https://pypi.python.org/pypi/django-ckeditor-updated - latest code, works with latest Django
-* shaunsephton / django-ckeditor is on PyPi as https://pypi.python.org/pypi/django-ckeditor - still old release not compatible with newer Django versions
+**NOTICE: The django-ckeditor-updated 4.4.4 have been merged with django-ckeditor and released as  django-ckeditor-4.4.4.**
 
-The goal is to merge all outstanding fixes and pull requests to this repository. When django-ckeditor will start getting constant releases "django-ckeditor-updated" will be closed.
+**NOTICE 2: This newer version has different configuration than old django-ckeditor releases!**
 
 
 **Django admin CKEditor integration.**
@@ -15,7 +11,7 @@ Provides a ``RichTextField`` and ``CKEditorWidget`` utilizing CKEditor with imag
 
 * This version also includes:
 #. support to django-storages (works with S3)
-#. updated ckeditor to version 4.2.1
+#. updated ckeditor to version 4.4
 #. included all ckeditor language files to made everyone happy!
 
 .. contents:: Contents
@@ -26,11 +22,11 @@ Installation
 
 Required
 ~~~~~~~~
-#. Install or add django-ckeditor-updated to your python path. Note: You may not have the original django-ckeditor and django-ckeditor-updated installed at the same time.
+#. Install or add django-ckeditor to your python path.
+    
+    pip install django-ckeditor
 
 #. Add ``ckeditor`` to your ``INSTALLED_APPS`` setting.
-
-#. Run the ``collectstatic`` management command: ``$ /manage.py collectstatic``. This'll copy static CKEditor require media resources into the directory given by the ``STATIC_ROOT`` setting. See `Django's documentation on managing static files <https://docs.djangoproject.com/en/dev/howto/static-files>`_ for more info.
 
 #. Add a CKEDITOR_UPLOAD_PATH setting to the project's ``settings.py`` file. This setting specifies an relative path to your CKEditor media upload directory. CKEditor uses Django storage API. By default Django uses file system storage backend (it will use your MEDIA_ROOT and MEDIA_URL) and if you don't use different backend you have to have write permissions for the CKEDITOR_UPLOAD_PATH path within MEDIA_ROOT, i.e.::
 
@@ -42,18 +38,26 @@ Required
    CKEditor has been tested with django FileSystemStorage and S3BotoStorage.
    There are issues using S3Storage from django-storages.
 
+#. Run the ``collectstatic`` management command: ``$ ./manage.py collectstatic``. This'll copy static CKEditor require media resources into the directory given by the ``STATIC_ROOT`` setting. See `Django's documentation on managing static files <https://docs.djangoproject.com/en/dev/howto/static-files>`_ for more info.
+
 #. Add CKEditor URL include to your project's ``urls.py`` file::
 
     (r'^ckeditor/', include('ckeditor.urls')),
+
+#. Note that by adding those URLs you add views that can upload and browse through uploaded images. Since django-ckeditor 4.4.6 those views are staff_member_required. If you want different permission decorator (login_required, user_passes_test etc.) then add views defined in `ckeditor.urls` manualy to you urls.py.
 
 #. Set ``CKEDITOR_IMAGE_BACKEND`` to one of supported backends to enable thumbnails in ckeditor gallery. By default no thumbnails are created and full size images are used as preview. Supported backends:
 
    - ``pillow``: uses PIL or Pillow
 
+#. **django-ckeditor uses jQuery in ckeditor-init.js file. You must set ``CKEDITOR_JQUERY_URL`` to a jQuery URL that will be used to load the library**. If you have jQuery loaded from a different source just don't set [CKEDITOR_JQUERY_URL] and django-ckeditor will not try to load its own jQuery. If you find that CKEditor widgets don't appear in your Django admin site then check that this variable is set correctly. Example::
+
+       CKEDITOR_JQUERY_URL = '//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js'
+
 
 Optional
 ~~~~~~~~
-#. All uploaded files are slugified by defaults, to disable this feature set ``CKEDITOR_SLUGIFY_FILENAME`` to ``False``
+#. All uploaded files are slugified by defaults, to disable this feature set ``CKEDITOR_UPLOAD_SLUGIFY_FILENAME`` to ``False``
 
 #. Set the CKEDITOR_RESTRICT_BY_USER setting to ``True`` in the project's ``settings.py`` file (default ``False``). This restricts access to uploaded images to the uploading user (e.g. each user only sees and uploads their own images). Superusers can still see all images. **NOTE**: This restriction is only enforced within the CKEditor media browser.
 
@@ -77,11 +81,25 @@ Optional
 
        CKEDITOR_CONFIGS = {
            'default': {
-               'toolbar': 'Full',
+               'toolbar': 'full',
                'height': 300,
                'width': 300,
            },
        }
+
+   It is possible to create a custom toolbar ::
+
+        CKEDITOR_CONFIGS = {
+            'default': {
+                'toolbar': 'Custom',
+                'toolbar_Custom': [
+                    ['Bold', 'Italic', 'Underline'],
+                    ['NumberedList', 'BulletedList', '-', 'Outdent', 'Indent', '-', 'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock'],
+                    ['Link', 'Unlink'],
+                    ['RemoveFormat', 'Source']
+                ]
+            }
+        }
 
 Usage
 -----
@@ -117,8 +135,28 @@ Alernatively you can use the included ``CKEditorWidget`` as the widget for a for
 
     admin.site.register(Post, PostAdmin)
 
-Managment Commands
-~~~~~~~~~~~~~~~~~~
+
+Outside of django admin
+~~~~~~~~~~~~~~~~~~~~~~~
+
+When you are rendering form outside of admin panel you will have to make sure that all form media is present for the editor to work. One of the way how to achieve this is following::
+
+    <form>
+        {{ myform.media }}
+        {{ myform.as_p }}
+        <input type="submit"/>
+    </form>
+
+or you can load the media manually at it is done in demo app::
+        
+    {% load staticfiles %}
+    <script type="text/javascript" src="{% static "ckeditor/ckeditor/ckeditor.js" %}"></script>
+    <script type="text/javascript" src="{% static "ckeditor/ckeditor-init.js" %}"></script>
+
+
+
+Management Commands
+~~~~~~~~~~~~~~~~~~~
 Included is a management command to create thumbnails for images already contained in ``CKEDITOR_UPLOAD_PATH``. This is useful to create thumbnails when starting to use django-ckeditor with existing images. Issue the command as follows::
 
     $ ./manage.py generateckeditorthumbnails
@@ -126,20 +164,23 @@ Included is a management command to create thumbnails for images already contain
 **NOTE**: If you're using custom views remember to include ckeditor.js in your form's media either through ``{{ form.media }}`` or through a ``<script>`` tag. Admin will do this for you automatically. See `Django's Form Media docs <http://docs.djangoproject.com/en/dev/topics/forms/media/>`_ for more info.
 
 Using S3
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~
 See http://django-storages.readthedocs.org/en/latest/
 
+**NOTE:** ``django-ckeditor`` will not work with S3 through ``django-storages`` without this line in ``settings.py``::  
+
+    AWS_QUERYSTRING_AUTH = False
 
 If you want to use allowedContent
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 To allowedContent works, disable **stylesheetparser** plugin.
-So included this on your settings.py.
+So included this on your settings.py.::
 
-CKEDITOR_CONFIGS = {
-    "default": {
-        "removePlugins": "stylesheetparser",
+    CKEDITOR_CONFIGS = {
+        "default": {
+            "removePlugins": "stylesheetparser",
+        }
     }
-}
 
 
 Demo / Test application
@@ -159,7 +200,11 @@ Database is set to sqlite3 and STATIC/MEDIA_ROOT to folders in temporary directo
 
 
 Running selenium test
-~~~~~~~~~~~~~~~~~~~~~~~
-
+~~~~~~~~~~~~~~~~~~~~~
 You can run the test with ``python manage.py test ckeditor_demo`` (for repo checkout only) or with ``tox`` which is configured to run with Python 2.7 and 3.3.
 (You may have to fix some imports in selenium webdriver for Python 3.3).
+
+
+Versioning
+~~~~~~~~~~
+First two numbers resemble ckeditor version used in the package. The third is used to issue releases for given ckeditor bundle (fixes, new features)

@@ -1,8 +1,54 @@
 Changelog
 =========
 
-<<<<<<< HEAD
-=======
+4.4.8
+-----
+#. Python 3 compatibility fixes
+#. Get static files paths in a proper way
+#. Fix Django 1.7 deprecation warning
+#. More examples in readme
+
+
+4.4.7
+-----
+#. Allow only POST requests on upload view.
+#. Exclude hidden files from image browser
+#. Prevent caching of image browser view
+#. Use lazy JSON encoder to support i18n in CKEditor settings.
+#. Misc documentation updates
+#. Check for jQuery presence correctly
+#. Update to CKEditor 4.4.6
+
+4.4.6
+-----
+#. Make upload/browse views be staff_member_required by default (can be overridden)
+#. Fix ckeditor initialisation code breaking with other jQuery versions.
+#. Support grappelli inline form widgets.
+#. Remove odd left margin from widget template.
+#. Allow running selenium tests with chromium.
+
+4.4.5
+-----
+#. Post merge package name fix in Readme
+
+4.4.4
+-----
+#. Update CKEditor to 4.4.4 full package - for all plugins and static files you may need
+#. Fixes for inline editor
+#. Editor initialisation uses jQuery. You need to specify CKEDITOR_JQUERY_URL for it to work. You can use::
+
+    CKEDITOR_JQUERY_URL = '//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js'
+
+
+4.4.0
+-----
+#. Update CKEditor to 4.4.1
+#. Django 1.7 compatibility fix
+
+4.2.8
+-----
+#. Update CKEditor to 4.3.3
+
 4.2.7
 -----
 #. Fix slugifying to empty filename if only bad characters given in filename. Use random string as fallback.
@@ -10,9 +56,8 @@ Changelog
 #. Remove non-existing image reference from CSS files that broke collectstatic.
 #. Misc fixes
 
->>>>>>> d9c2ec94efcd9a8e36f849116ea88c1dba445c0b
 4.2.5 / 4.2.6
------
+-------------
 #. Fix static files installation - switch from distutils to setuptools
 
 4.2.4

@@ -7,11 +7,25 @@ from django.utils.html import conditional_escape
 from django.utils.encoding import force_text
 from django.utils.translation import get_language
 from django.core.exceptions import ImproperlyConfigured
-from django.forms.util import flatatt
-import json
+try:
+    # Django >=1.7
+    from django.forms.utils import flatatt
+except ImportError:
+    # Django <1.7
+    from django.forms.util import flatatt
+
+from django.utils.functional import Promise
+from django.utils.encoding import force_text
+from django.core.serializers.json import DjangoJSONEncoder
+
+class LazyEncoder(DjangoJSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Promise):
+            return force_text(obj)
+        return super(LazyEncoder, self).default(obj)
 
 
-json_encode = json.JSONEncoder().encode
+json_encode = LazyEncoder().encode
 
 DEFAULT_CONFIG = {
     'skin': 'moono',
@@ -20,6 +34,7 @@ DEFAULT_CONFIG = {
     ],
     'toolbar_Full': [
         ['Styles', 'Format', 'Bold', 'Italic', 'Underline', 'Strike', 'SpellChecker', 'Undo', 'Redo'],
+        ['Link', 'Unlink', 'Anchor'],
         ['Image', 'Flash', 'Table', 'HorizontalRule'],
         ['TextColor', 'BGColor'],
         ['Smiley', 'SpecialChar'], ['Source'],
@@ -38,9 +53,14 @@ class CKEditorWidget(forms.Textarea):
     Supports direct image uploads and embed.
     """
     class Media:
+        js = ()
+        jquery_url = getattr(settings, 'CKEDITOR_JQUERY_URL', None)
+        if jquery_url:
+            js += (jquery_url, )
         try:
-            js = (
+            js += (
                 settings.STATIC_URL + 'ckeditor/ckeditor/ckeditor.js',
+                settings.STATIC_URL + 'ckeditor/ckeditor-init.js',
             )
         except AttributeError:
             raise ImproperlyConfigured("django-ckeditor requires \
@@ -49,7 +69,7 @@ class CKEditorWidget(forms.Textarea):
                     uploaded media). Make sure to use a trailing slash: \
                     CKEDITOR_MEDIA_PREFIX = '/media/ckeditor/'")
 
-    def __init__(self, config_name='default', *args, **kwargs):
+    def __init__(self, config_name='default', extra_plugins=None, external_plugin_resources=None, *args, **kwargs):
         super(CKEditorWidget, self).__init__(*args, **kwargs)
         # Setup config from defaults.
         self.config = DEFAULT_CONFIG.copy()
@@ -76,19 +96,31 @@ class CKEditorWidget(forms.Textarea):
                 raise ImproperlyConfigured('CKEDITOR_CONFIGS setting must be a\
                         dictionary type.')
 
+        extra_plugins = extra_plugins or []
+
+        if extra_plugins:
+            self.config['extraPlugins'] = ','.join(extra_plugins)
+
+        self.external_plugin_resources = external_plugin_resources or []
+
     def render(self, name, value, attrs={}):
         if value is None:
             value = ''
         final_attrs = self.build_attrs(attrs, name=name)
-        self.config.setdefault('filebrowserUploadUrl', reverse('ckeditor_upload'))
-        self.config.setdefault('filebrowserBrowseUrl', reverse('ckeditor_browse'))
-
+        if 'filebrowserUploadUrl' not in self.config:
+            self.config.setdefault('filebrowserUploadUrl', reverse('ckeditor_upload'))
+        if 'filebrowserBrowseUrl' not in self.config:
+            self.config.setdefault('filebrowserBrowseUrl', reverse('ckeditor_browse'))
         if not self.config.get('language'):
             self.config['language'] = get_language()
+
+        # Force to text to evaluate possible lazy objects
+        external_plugin_resources = [[force_text(a), force_text(b), force_text(c)] for a, b, c in self.external_plugin_resources]
 
         return mark_safe(render_to_string('ckeditor/widget.html', {
             'final_attrs': flatatt(final_attrs),
             'value': conditional_escape(force_text(value)),
             'id': final_attrs['id'],
-            'config': json_encode(self.config)
+            'config': json_encode(self.config),
+            'external_plugin_resources' : json_encode(external_plugin_resources)
         }))

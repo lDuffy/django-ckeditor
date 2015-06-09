@@ -4,6 +4,7 @@ import os
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.views.decorators.csrf import csrf_exempt
+from django.views import generic
 from django.http import HttpResponse
 from django.shortcuts import render_to_response
 from django.template import RequestContext
@@ -19,7 +20,6 @@ def get_upload_filename(upload_name, user):
     else:
         user_path = ''
 
-
     # Complete upload path (upload_path + date_path).
     upload_path = os.path.join(
         settings.CKEDITOR_UPLOAD_PATH, user_path)
@@ -30,43 +30,46 @@ def get_upload_filename(upload_name, user):
     return default_storage.get_available_name(os.path.join(upload_path, upload_name))
 
 
-@csrf_exempt
-def upload(request):
-    """
-    Uploads a file and send back its URL to CKEditor.
+class ImageUploadView(generic.View):
+    http_method_names = ['post']
 
-    TODO:
-        Validate uploads
-    """
-    # Get the uploaded file from request.
-    upload = request.FILES['upload']
+    def post(self, request, **kwargs):
+        """
+        Uploads a file and send back its URL to CKEditor.
+        """
+        # Get the uploaded file from request.
+        upload = request.FILES['upload']
 
-    #Verify that file is a valid image
-    backend = image_processing.get_backend()
-    name = upload.name.lower()
-    extension = name[name.rfind('.')+1:]
-    s = "jpg jpeg png"
-    if s.find(extension) == -1:
-        return HttpResponse("""
+
+        #Verify that file is a valid image
+        backend = image_processing.get_backend()
+        name = upload.name.lower()
+        extension = name[name.rfind('.')+1:]
+        s = "jpg jpeg png"
+        if s.find(extension) == -1:
+            return HttpResponse("""
                    <script type='text/javascript'>
                         alert('Invalid image. Please use .jpg or .png')
                         window.parent.CKEDITOR.tools.callFunction({0});
                    </script>""".format(request.GET['CKEditorFuncNum']))
 
-    # Open output file in which to store upload.
-    upload_filename = get_upload_filename(upload.name, request.user)
-    saved_path = default_storage.save(upload_filename, upload)
+        # Open output file in which to store upload.
+        upload_filename = get_upload_filename(upload.name, request.user)
+        saved_path = default_storage.save(upload_filename, upload)
 
-    if backend.should_create_thumbnail(saved_path):
-        backend.create_thumbnail(saved_path)
 
-    url = utils.get_media_url(saved_path)
+        if backend.should_create_thumbnail(saved_path):
+            backend.create_thumbnail(saved_path)
 
-    # Respond with Javascript sending ckeditor upload url.
-    return HttpResponse("""
-    <script type='text/javascript'>
-        window.parent.CKEDITOR.tools.callFunction({0}, '{1}');
-    </script>""".format(request.GET['CKEditorFuncNum'], url))
+        url = utils.get_media_url(saved_path)
+
+        # Respond with Javascript sending ckeditor upload url.
+        return HttpResponse("""
+        <script type='text/javascript'>
+            window.parent.CKEDITOR.tools.callFunction({0}, '{1}');
+        </script>""".format(request.GET['CKEditorFuncNum'], url))
+
+upload = csrf_exempt(ImageUploadView.as_view())
 
 
 def get_image_files(user=None, path=''):
@@ -95,12 +98,14 @@ def get_image_files(user=None, path=''):
         return
 
     for filename in storage_list[STORAGE_FILES]:
-        if os.path.splitext(filename)[0].endswith('_thumb'):
+        if os.path.splitext(filename)[0].endswith('_thumb') or os.path.basename(filename).startswith('.'):
             continue
         filename = os.path.join(browse_path, filename)
         yield filename
 
     for directory in storage_list[STORAGE_DIRECTORIES]:
+        if directory.startswith('.'):
+            continue
         directory_path = os.path.join(path, directory)
         for element in get_image_files(user=user, path=directory_path):
             yield element
@@ -118,12 +123,11 @@ def get_files_browse_urls(user=None):
             thumb = utils.get_media_url(utils.get_thumb_filename(filename))
         else:
             thumb = src
-        if is_image(src):
-            files.append({
-                'thumb': thumb,
-                'src': src,
-                'is_image': is_image(src)
-            })
+        files.append({
+            'thumb': thumb,
+            'src': src,
+            'is_image': is_image(src)
+        })
 
     return files
 

@@ -3,11 +3,21 @@ import hashlib
 import os.path
 from time import sleep
 
+CHROMIUM = 'chromium'
+FIREFOX = 'firefox'
+SELENIUM_BROWSER = FIREFOX
+
 from django.conf import settings
 from django.contrib.staticfiles.finders import find
 from django.test import LiveServerTestCase
 from django.test.utils import override_settings
-from selenium.webdriver.firefox.webdriver import WebDriver
+
+if SELENIUM_BROWSER == CHROMIUM:
+    from selenium import webdriver
+elif SELENIUM_BROWSER == FIREFOX:
+    from selenium.webdriver.firefox.webdriver import WebDriver
+else:
+    raise ValueError('a browser must be picked to run selenium tests')
 
 
 class TestAdminPanelWidget(LiveServerTestCase):
@@ -15,7 +25,10 @@ class TestAdminPanelWidget(LiveServerTestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.selenium = WebDriver()
+        if SELENIUM_BROWSER == CHROMIUM:
+            cls.selenium = webdriver.Chrome(executable_path='/usr/lib/chromium-browser/chromedriver')
+        elif SELENIUM_BROWSER == FIREFOX:
+             cls.selenium = WebDriver()
         super(TestAdminPanelWidget, cls).setUpClass()
 
     @classmethod
@@ -62,15 +75,15 @@ class TestAdminPanelWidget(LiveServerTestCase):
         sleep(1)
 
     def _go_to_upload_tab(self):
-        self.selenium.find_element_by_id("cke_Upload_111").click()
+        self.selenium.find_element_by_id("cke_Upload_116").click()
         sleep(1)
 
     def _switch_to_form_iframe(self):
-        iframe = self.selenium.find_element_by_id('cke_106_fileInput')
+        iframe = self.selenium.find_element_by_id('cke_111_fileInput')
         self.selenium.switch_to_frame(iframe)
 
     def _upload_image(self):
-        input = self.selenium.find_element_by_id("cke_106_fileInput_input")
+        input = self.selenium.find_element_by_id("cke_111_fileInput_input")
         input.send_keys(self._get_upload_file())
         self.selenium.switch_to_default_content()
         self.selenium.find_element_by_class_name("cke_dialog_ui_fileButton").click()
